@@ -125,12 +125,22 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  // Sunucudan dönen sonucu beklemeden anında göstermek için yerel sonuç
+  const [instant, setInstant] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   const questionIndex = data?.question?.index;
   const countdown = useStartCountdown(data?.status, questionIndex);
 
   useEffect(() => {
     setTyped("");
+    setInstant(null);
   }, [questionIndex]);
+
+  // Sunucu durumu yetişince yerel sonucu bırak
+  useEffect(() => {
+    if (data?.me) setInstant(null);
+  }, [data?.me]);
+
+  const meResult = data?.me ?? instant;
 
   useEffect(() => {
     const id = setInterval(() => void ping({ data: { playerId } }), 15000);
@@ -231,8 +241,9 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
                 setSending("fill");
                 setError(null);
                 try {
-                  await answer({ data: { code, playerId, answer: typed } });
-                  await refetch();
+                  const res = await answer({ data: { code, playerId, answer: typed } });
+                  setInstant({ answer: typed, isCorrect: res.isCorrect });
+                  void refetch();
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "Gönderilemedi");
                 } finally {
@@ -246,12 +257,12 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
                 maxLength={200}
                 placeholder="Cevabını yaz..."
                 aria-label="Cevabın"
-                disabled={data.resolved || data.me?.isCorrect === true || data.status !== "PLAYING"}
+                disabled={data.resolved || meResult?.isCorrect === true || data.status !== "PLAYING"}
                 className="rounded-2xl border-2 border-border bg-background px-4 py-4 text-base font-semibold text-foreground outline-none focus:border-foreground"
               />
               <button
                 type="submit"
-                disabled={data.resolved || data.me?.isCorrect === true || data.status !== "PLAYING" || !!sending || !typed.trim()}
+                disabled={data.resolved || meResult?.isCorrect === true || data.status !== "PLAYING" || !!sending || !typed.trim()}
                 className="rounded-full bg-foreground py-4 font-bold text-background disabled:opacity-60"
               >
                 {sending ? "GÖNDERİLİYOR..." : "GÖNDER"}
@@ -260,19 +271,20 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
           ) : (
           <div className="mt-5 grid gap-3">
             {LETTERS.filter((letter) => q.options[letter]?.trim()).map((letter) => {
-              const chosen = data.me?.answer === letter;
+              const chosen = meResult?.answer === letter;
               return (
                 <button
                   key={letter}
                   disabled={
-                    data.resolved || data.me?.isCorrect === true || data.status !== "PLAYING" || !!sending
+                    data.resolved || meResult?.isCorrect === true || data.status !== "PLAYING" || !!sending
                   }
                   onClick={async () => {
                     setSending(letter);
                     setError(null);
                     try {
-                      await answer({ data: { code, playerId, answer: letter } });
-                      await refetch();
+                      const res = await answer({ data: { code, playerId, answer: letter } });
+                      setInstant({ answer: letter, isCorrect: res.isCorrect });
+                      void refetch();
                     } catch (e) {
                       setError(e instanceof Error ? e.message : "Gönderilemedi");
                     } finally {
@@ -293,16 +305,16 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
           </div>
           )}
 
-          {data.me && (
+          {meResult && (
             <div className="mt-5 text-center">
               <p
                 className={`mt-1 rounded-2xl px-4 py-4 text-4xl font-extrabold text-panel ${
-                  data.me.isCorrect ? "bg-team1" : "bg-destructive"
+                  meResult.isCorrect ? "bg-team1" : "bg-destructive"
                 }`}
               >
-                {data.me.isCorrect ? "DOĞRU! ✅" : "YANLIŞ! ❌"}
+                {meResult.isCorrect ? "DOĞRU! ✅" : "YANLIŞ! ❌"}
               </p>
-              {!data.me.isCorrect && !data.resolved && (
+              {!meResult.isCorrect && !data.resolved && (
                 <p className="mt-1 text-sm font-semibold text-muted-foreground">
                   Doğru cevabı bulana kadar deneyebilirsin.
                 </p>
