@@ -303,15 +303,10 @@ export const submitAnswer = createServerFn({ method: "POST" })
     if (isCorrect && !someoneAlreadyCorrect) {
       const delta = player.team === 1 ? -STEP : STEP;
       const next = Math.max(-WIN_LIMIT, Math.min(WIN_LIMIT, room.rope_position + delta));
-      const finished = Math.abs(next) >= WIN_LIMIT;
+      // Yarışma yalnızca sorular bitince sona erer; halat sınıra ulaşsa bile devam eder.
       await supabase
         .from("rooms")
-        .update({
-          rope_position: next,
-          ...(finished
-            ? { status: "FINISHED", winner: next <= -WIN_LIMIT ? "TEAM1" : "TEAM2" }
-            : {}),
-        })
+        .update({ rope_position: next })
         .eq("id", room.id);
     }
 
