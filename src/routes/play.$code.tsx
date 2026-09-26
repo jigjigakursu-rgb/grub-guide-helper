@@ -295,8 +295,12 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
 
           {data.me && (
             <div className="mt-5 text-center">
-              <p className="mt-1 text-2xl font-extrabold text-foreground">
-                {data.me.isCorrect ? "DOĞRU! 🎉" : "YANLIŞ — tekrar dene"}
+              <p
+                className={`mt-1 rounded-2xl px-4 py-4 text-4xl font-extrabold text-panel ${
+                  data.me.isCorrect ? "bg-team1" : "bg-destructive"
+                }`}
+              >
+                {data.me.isCorrect ? "DOĞRU! ✅" : "YANLIŞ! ❌"}
               </p>
               {!data.me.isCorrect && !data.resolved && (
                 <p className="mt-1 text-sm font-semibold text-muted-foreground">

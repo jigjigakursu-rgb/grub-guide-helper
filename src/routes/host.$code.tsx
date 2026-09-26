@@ -92,7 +92,7 @@ function HostScreen() {
     if (status !== "PLAYING" || !resolved) return undefined;
     const id = setTimeout(() => {
       void control({ data: { code, action: "next" } }).then(() => refetch());
-    }, 2200);
+    }, 700);
     return () => clearTimeout(id);
   }, [status, resolved, qIndex, code, control, refetch]);
 
