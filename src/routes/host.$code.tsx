@@ -208,9 +208,14 @@ function HostScreen() {
           ) : data.status === "FINISHED" ? (
             <section className="py-6 text-center">
               <ScoreHeader scores={data.scores} players={data.players} elapsed={elapsed} />
-              <WinnerBanner winner={data.winner} players={data.players} />
-              <div className="mt-6">
+              {/* Halat ve oyuncular yerinde sabit kalır; kazanan duyurusu üzerine bindirilir */}
+              <div className="relative mt-2">
                 <TugOfWarArena ropePosition={data.ropePosition} />
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center">
+                  <div className="pointer-events-auto">
+                    <WinnerBanner winner={data.winner} players={data.players} />
+                  </div>
+                </div>
               </div>
             </section>
           ) : (
