@@ -125,12 +125,22 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  // Sunucudan dönen sonucu beklemeden anında göstermek için yerel sonuç
+  const [instant, setInstant] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   const questionIndex = data?.question?.index;
   const countdown = useStartCountdown(data?.status, questionIndex);
 
   useEffect(() => {
     setTyped("");
+    setInstant(null);
   }, [questionIndex]);
+
+  // Sunucu durumu yetişince yerel sonucu bırak
+  useEffect(() => {
+    if (data?.me) setInstant(null);
+  }, [data?.me]);
+
+  const meResult = data?.me ?? instant;
 
   useEffect(() => {
     const id = setInterval(() => void ping({ data: { playerId } }), 15000);
