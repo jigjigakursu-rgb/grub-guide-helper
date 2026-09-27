@@ -127,17 +127,23 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
   const [typed, setTyped] = useState("");
   // Sunucudan dönen sonucu beklemeden anında göstermek için yerel sonuç
   const [instant, setInstant] = useState<{ answer: string; isCorrect: boolean } | null>(null);
+  // Seçilen şıkkı sunucu yanıtı gelmeden hemen işaretle
+  const [optimistic, setOptimistic] = useState<string | null>(null);
   const questionIndex = data?.question?.index;
   const countdown = useStartCountdown(data?.status, questionIndex);
 
   useEffect(() => {
     setTyped("");
     setInstant(null);
+    setOptimistic(null);
   }, [questionIndex]);
 
   // Sunucu durumu yetişince yerel sonucu bırak
   useEffect(() => {
-    if (data?.me) setInstant(null);
+    if (data?.me) {
+      setInstant(null);
+      setOptimistic(null);
+    }
   }, [data?.me]);
 
   const meResult = data?.me ?? instant;
@@ -271,7 +277,7 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
           ) : (
           <div className="mt-5 grid gap-3">
             {LETTERS.filter((letter) => q.options[letter]?.trim()).map((letter) => {
-              const chosen = meResult?.answer === letter;
+              const chosen = meResult?.answer === letter || optimistic === letter;
               return (
                 <button
                   key={letter}
@@ -280,12 +286,14 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
                   }
                   onClick={async () => {
                     setSending(letter);
+                    setOptimistic(letter);
                     setError(null);
                     try {
                       const res = await answer({ data: { code, playerId, answer: letter } });
                       setInstant({ answer: letter, isCorrect: res.isCorrect });
                       void refetch();
                     } catch (e) {
+                      setOptimistic(null);
                       setError(e instanceof Error ? e.message : "Gönderilemedi");
                     } finally {
                       setSending(null);
@@ -319,13 +327,6 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
                   Doğru cevabı bulana kadar deneyebilirsin.
                 </p>
               )}
-            </div>
-          )}
-          {!meResult && sending && (
-            <div className="mt-5 text-center">
-              <p className="mt-1 animate-pulse rounded-2xl bg-muted px-4 py-4 text-3xl font-extrabold text-foreground">
-                KONTROL EDİLİYOR...
-              </p>
             </div>
           )}
           {error && (
