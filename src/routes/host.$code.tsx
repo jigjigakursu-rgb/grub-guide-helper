@@ -263,12 +263,15 @@ function HostScreen() {
                 </>
               )}
               {data.status === "FINISHED" && (
-                <Ctrl
-                  onClick={() => startWithFullscreen("restart")}
-                  primary
-                >
-                  BAŞLAT
-                </Ctrl>
+                <>
+                  <Ctrl
+                    onClick={() => startWithFullscreen("restart")}
+                    primary
+                  >
+                    BAŞLAT
+                  </Ctrl>
+                  <Ctrl onClick={() => void navigate({ to: "/" })}>ÇIKIŞ</Ctrl>
+                </>
               )}
             </div>
           </div>
