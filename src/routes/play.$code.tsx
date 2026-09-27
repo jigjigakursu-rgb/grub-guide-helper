@@ -314,6 +314,11 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
               >
                 {meResult.isCorrect ? "DOĞRU! ✅" : "YANLIŞ! ❌"}
               </p>
+              {!meResult.isCorrect && !data.resolved && (
+                <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                  Doğru cevabı bulana kadar deneyebilirsin.
+                </p>
+              )}
             </div>
           )}
           {!meResult && sending && (
@@ -321,11 +326,6 @@ function GameView({ code, playerId }: { code: string; playerId: string }) {
               <p className="mt-1 animate-pulse rounded-2xl bg-muted px-4 py-4 text-3xl font-extrabold text-foreground">
                 KONTROL EDİLİYOR...
               </p>
-              {!meResult.isCorrect && !data.resolved && (
-                <p className="mt-1 text-sm font-semibold text-muted-foreground">
-                  Doğru cevabı bulana kadar deneyebilirsin.
-                </p>
-              )}
             </div>
           )}
           {error && (
