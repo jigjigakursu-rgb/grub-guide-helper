@@ -154,12 +154,6 @@ export const getRoomState = createServerFn({ method: "POST" })
     const supabase = await db();
     const room = await loadRoom(data.code);
 
-    const { data: players } = await supabase
-      .from("players")
-      .select("id, name, team, connected")
-      .eq("room_id", room.id)
-      .order("team");
-
     const questionIds = (room.question_ids ?? []) as string[];
     const currentId = questionIds[room.current_question] ?? null;
 
@@ -168,35 +162,47 @@ export const getRoomState = createServerFn({ method: "POST" })
     let me: RoomState["me"] = null;
     let resolved = false;
 
-    if (currentId && room.status !== "WAITING" && room.status !== "READY") {
-      const { data: q } = await supabase
-        .from("questions")
-        .select("question, option_a, option_b, option_c, option_d, question_type, category, difficulty")
-        .eq("id", currentId)
-        .maybeSingle();
-      if (q) {
-        question = {
-          index: room.current_question + 1,
-          total: questionIds.length,
-          question: q.question,
-          type: (q.question_type as PublicQuestion["type"]) ?? "multiple",
-          options:
-            q.question_type === "fill"
-              ? { A: "", B: "", C: "", D: "" }
-              : { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d },
-          category: q.category,
-          difficulty: q.difficulty,
-        };
-      }
-      const { data: answers } = await supabase
-        .from("answers")
-        .select("player_id, answer_text, is_correct")
-        .eq("room_id", room.id)
-        .eq("question_id", currentId);
-      answeredIds = (answers ?? []).map((a: any) => a.player_id);
+    // Oyuncular, soru ve tüm cevaplar aynı anda sorgulanır — durum güncellemesi hızlanır
+    const needsQuestion = currentId && room.status !== "WAITING" && room.status !== "READY";
+    const [playersRes, qRes, answersRes] = await Promise.all([
+      supabase.from("players").select("id, name, team, connected").eq("room_id", room.id).order("team"),
+      needsQuestion
+        ? supabase
+            .from("questions")
+            .select("question, option_a, option_b, option_c, option_d, question_type, category, difficulty")
+            .eq("id", currentId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("answers").select("player_id, question_id, answer_text, is_correct").eq("room_id", room.id),
+    ]);
+
+    const players = playersRes.data;
+    const allAnswers = (answersRes.data ?? []) as Array<{
+      player_id: string;
+      question_id: string;
+      answer_text: string;
+      is_correct: boolean;
+    }>;
+
+    if (needsQuestion && qRes.data) {
+      const q = qRes.data;
+      question = {
+        index: room.current_question + 1,
+        total: questionIds.length,
+        question: q.question,
+        type: (q.question_type as PublicQuestion["type"]) ?? "multiple",
+        options:
+          q.question_type === "fill"
+            ? { A: "", B: "", C: "", D: "" }
+            : { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d },
+        category: q.category,
+        difficulty: q.difficulty,
+      };
+      const currentAnswers = allAnswers.filter((a) => a.question_id === currentId);
+      answeredIds = currentAnswers.map((a) => a.player_id);
       // Soru yalnızca doğru cevap verildiğinde çözülür; yanlış cevap veren denemeye devam eder.
-      resolved = (answers ?? []).some((a: any) => a.is_correct);
-      const mine = (answers ?? []).find((a: any) => a.player_id === data.playerId);
+      resolved = currentAnswers.some((a) => a.is_correct);
+      const mine = currentAnswers.find((a) => a.player_id === data.playerId);
       if (mine) me = { answer: mine.answer_text ?? "", isCorrect: mine.is_correct };
     }
 
