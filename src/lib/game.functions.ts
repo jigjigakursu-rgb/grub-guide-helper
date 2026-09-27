@@ -207,15 +207,11 @@ export const getRoomState = createServerFn({ method: "POST" })
     }
 
     // Takım bazında toplam doğru sayısı (tüm oyun boyunca)
-    const { data: allAnswers } = await supabase
-      .from("answers")
-      .select("player_id, is_correct")
-      .eq("room_id", room.id);
     const teamOf = new Map<string, number>(
       (players ?? []).map((p: any) => [p.id, p.team as number]),
     );
     const scores: { 1: number; 2: number } = { 1: 0, 2: 0 };
-    for (const a of (allAnswers ?? []) as Array<{ player_id: string; is_correct: boolean }>) {
+    for (const a of allAnswers) {
       if (!a.is_correct) continue;
       const t = teamOf.get(a.player_id);
       if (t === 1 || t === 2) scores[t] += 1;
