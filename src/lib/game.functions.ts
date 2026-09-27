@@ -250,26 +250,26 @@ export const submitAnswer = createServerFn({ method: "POST" })
     const currentId = questionIds[room.current_question];
     if (!currentId) throw new Error("Aktif soru yok");
 
-    const { data: player } = await supabase
-      .from("players")
-      .select("id, team, room_id")
-      .eq("id", data.playerId)
-      .maybeSingle();
+    // Oyuncu, soru ve mevcut cevaplar aynı anda sorgulanır — cevap süresi kısalır
+    const [playerRes, qRes, answersRes] = await Promise.all([
+      supabase.from("players").select("id, team, room_id").eq("id", data.playerId).maybeSingle(),
+      supabase
+        .from("questions")
+        .select("correct_answer_text, option_a, option_b, option_c, option_d, question_type")
+        .eq("id", currentId)
+        .maybeSingle(),
+      supabase
+        .from("answers")
+        .select("id, player_id, is_correct")
+        .eq("room_id", room.id)
+        .eq("question_id", currentId),
+    ]);
+    const player = playerRes.data;
     if (!player || player.room_id !== room.id) throw new Error("Oyuncu bu odada değil");
-
-    const { data: qRow } = await supabase
-      .from("questions")
-      .select("correct_answer_text, option_a, option_b, option_c, option_d, question_type")
-      .eq("id", currentId)
-      .maybeSingle();
+    const qRow = qRes.data;
     if (!qRow) throw new Error("Soru bulunamadı");
     const q = { ...qRow, correct_answer: qRow.correct_answer_text ?? "" };
-
-    const { data: existing } = await supabase
-      .from("answers")
-      .select("id, player_id, is_correct")
-      .eq("room_id", room.id)
-      .eq("question_id", currentId);
+    const existing = answersRes.data;
     if ((existing ?? []).some((a: any) => a.is_correct))
       throw new Error("Bu soru çözüldü, sıradaki soru geliyor");
 
